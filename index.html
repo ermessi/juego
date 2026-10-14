@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Puerto de contenedores · Tema 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#D9DFE2; --card:#F4F6F7; --ink:#10222E; --muted:#4C6272; --line:#B3BFC6;
+  --ok:#2E7D4F; --bad:#B8372E;
+  --c-A:#B8372E; --c-F:#2F6C9E; --c-S:#D9A21E; --c-G:#3F7D58; --c-L:#7A5CA8;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 Barlow,system-ui,sans-serif;min-height:100vh;padding:16px}
+.wrap{max-width:640px;margin:0 auto}
+h1,h2,.hd{font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-weight:700;line-height:1.05;margin:0}
+h1{font-size:clamp(42px,11vw,64px);margin:6px 0 10px}
+h2{font-size:30px;margin-bottom:6px}
+.lead{color:var(--muted);margin:0 0 18px;max-width:48ch}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:14px}
+.screen[hidden]{display:none}
+.label{font-weight:600;margin:14px 0 6px}
+
+/* Barco */
+.ship{margin:4px 0 14px}
+.stack{display:flex;flex-direction:column-reverse;padding:0 7%}
+.row{display:flex}
+.box{flex:1;height:24px;margin:1px;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.box.full{background-color:var(--cc);background-image:repeating-linear-gradient(90deg,rgba(0,0,0,.2) 0 2px,transparent 2px 7px)}
+.box.empty{border:1.5px dashed var(--line)}
+.box.miss{border:1.5px solid var(--bad);color:var(--bad)}
+.box.ghost{visibility:hidden}
+.box.new{animation:drop .45s ease-out}
+@keyframes drop{from{transform:translateY(-34px);opacity:0}to{transform:none;opacity:1}}
+.hull{height:26px;background:var(--ink);clip-path:polygon(0 0,100% 0,93% 100%,7% 100%);margin-top:2px}
+.sea{height:14px;background:repeating-linear-gradient(90deg,#2B6A84 0 18px,#1D4A5E 18px 36px);border-radius:0 0 8px 8px;margin-top:-2px}
+
+/* HUD */
+.hud{display:flex;justify-content:space-between;align-items:center;font-weight:600;margin-bottom:8px;gap:10px}
+.hud .hd{font-size:26px}
+.lives span{font-size:20px;margin-left:2px}
+.lives span.lost{opacity:.2}
+.timer{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:12px}
+.timer i{display:block;height:100%;width:100%;background:var(--ink);transition:width .1s linear}
+.timer.low i{background:var(--bad)}
+.timer[hidden]{display:none}
+
+/* Pregunta */
+.tag{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:15px;color:var(--muted)}
+.tag i{width:12px;height:12px;border-radius:2px;background:var(--cc)}
+.q{font:700 clamp(24px,6vw,30px)/1.15 "Barlow Condensed","Arial Narrow",sans-serif;margin:8px 0 12px}
+.opt{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;padding:12px 14px;margin:8px 0;border:1.5px solid var(--line);background:#fff;border-radius:8px;font:500 16px/1.35 Barlow,system-ui,sans-serif;color:var(--ink);cursor:pointer}
+.opt:hover:not(:disabled){border-color:var(--ink)}
+.opt:disabled{cursor:default;color:var(--ink)}
+.opt b{min-width:18px;color:var(--muted)}
+.opt.ok{border-color:var(--ok);background:#E1F1E7}
+.opt.bad{border-color:var(--bad);background:#F6E1DE}
+.fb{border-top:1px solid var(--line);margin-top:12px;padding-top:12px}
+.fb[hidden]{display:none}
+.fb .hd{font-size:26px}
+.fb p{margin:4px 0 12px}
+
+/* Controles */
+.btn{font:700 20px "Barlow Condensed","Arial Narrow",sans-serif;padding:11px 22px;border-radius:8px;border:2px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn:focus-visible,.opt:focus-visible,.chip:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #2F6C9E;outline-offset:2px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid var(--ink);border-radius:999px;background:transparent;color:var(--ink);font:500 15px Barlow,system-ui,sans-serif;cursor:pointer}
+.chip i{width:12px;height:12px;border-radius:2px;background:var(--cc)}
+.chip[aria-pressed="false"]{border-color:var(--line);color:var(--muted)}
+.chip[aria-pressed="false"] i{opacity:.3}
+.set{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin-top:16px}
+select{font:500 16px Barlow,system-ui,sans-serif;padding:6px 8px;border-radius:6px;border:1.5px solid var(--ink);background:#fff;color:var(--ink)}
+label.inline{display:flex;gap:8px;align-items:center;font-weight:500}
+input[type=checkbox]{width:18px;height:18px}
+.msg{color:var(--bad);font-weight:600;margin-top:10px;min-height:1.5em}
+
+/* Resultados */
+.score{font:700 64px/1 "Barlow Condensed","Arial Narrow",sans-serif}
+.bars{margin:12px 0}
+.bar{display:grid;grid-template-columns:150px 1fr 44px;gap:10px;align-items:center;margin:6px 0;font-size:15px}
+.bar .track{height:12px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar .track i{display:block;height:100%;background:var(--cc)}
+.bar span:last-child{text-align:right;font-weight:600}
+ul.fails{padding-left:18px;margin:8px 0}
+ul.fails li{margin:10px 0}
+ul.fails small{color:var(--muted);display:block}
+@media (max-width:480px){.bar{grid-template-columns:110px 1fr 40px}}
+@media (prefers-reduced-motion:reduce){.box.new{animation:none}.timer i{transition:none}}
+</style>
+</head>
+<body>
+<main class="wrap">
+
+  <!-- INICIO -->
+  <section id="start" class="screen">
+    <h1>Puerto de contenedores</h1>
+    <p class="lead">Responde bien y carga el barco. Cada contenedor tiene el color de su apartado del Tema 1. Si fallas, pierdes un ancla y queda un hueco.</p>
+    <div class="card">
+      <div class="label" style="margin-top:0">Apartados</div>
+      <div class="chips" id="chips"></div>
+      <div class="set">
+        <label class="inline">Preguntas
+          <select id="rounds">
+            <option value="8">8</option>
+            <option value="12" selected>12</option>
+            <option value="20">20</option>
+            <option value="all">Todas</option>
+          </select>
+        </label>
+        <label class="inline"><input type="checkbox" id="timed"> Con tiempo (20 s)</label>
+      </div>
+      <div class="msg" id="startMsg" role="status"></div>
+      <div class="actions"><button class="btn" id="go">Empezar</button></div>
+    </div>
+    <p class="lead" id="best"></p>
+  </section>
+
+  <!-- JUEGO -->
+  <section id="game" class="screen" hidden>
+    <div class="hud">
+      <div><span class="hd" id="score">0</span> puntos</div>
+      <div id="prog"></div>
+      <div class="lives" id="lives" aria-label="Vidas"></div>
+    </div>
+    <div class="ship" aria-hidden="true">
+      <div class="stack" id="stack"></div>
+      <div class="hull"></div>
+      <div class="sea"></div>
+    </div>
+    <div class="timer" id="timer" hidden><i id="tbar"></i></div>
+    <div class="card">
+      <div class="tag" id="qcat"><i></i><span></span></div>
+      <div class="q" id="qtext"></div>
+      <div id="opts"></div>
+      <div class="fb" id="fb" hidden>
+        <div class="hd" id="fbTitle"></div>
+        <p id="fbText"></p>
+        <button class="btn" id="next">Siguiente</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL -->
+  <section id="end" class="screen" hidden>
+    <h2 id="endTitle"></h2>
+    <div class="card">
+      <div class="score" id="endScore"></div>
+      <p id="endInfo" style="margin:4px 0 0"></p>
+      <p id="endBest" class="lead" style="margin:6px 0 0"></p>
+    </div>
+    <div class="card">
+      <div class="hd" style="font-size:24px">Cómo vas en cada apartado</div>
+      <div class="bars" id="bars"></div>
+    </div>
+    <div class="card" id="failBox">
+      <div class="hd" style="font-size:24px">Para repasar</div>
+      <ul class="fails" id="fails"></ul>
+    </div>
+    <div class="actions">
+      <button class="btn" id="again">Jugar otra vez</button>
+      <button class="btn ghost" id="review">Repasar fallos</button>
+      <button class="btn ghost" id="menu">Menú</button>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* ---------- Datos ---------- */
+const CATS = {
+  A: { n: "Actividad económica", v: "--c-A" },
+  F: { n: "Factores de producción", v: "--c-F" },
+  S: { n: "Sistemas económicos", v: "--c-S" },
+  G: { n: "Agentes económicos", v: "--c-G" },
+  L: { n: "Globalización", v: "--c-L" }
+};
+
+// [apartado, pregunta, opciones, índice de la correcta, explicación]
+const RAW = [
+  ["A","¿Cuáles son las tres fases de la actividad económica?",["Producción, distribución y consumo","Ahorro, inversión y gasto","Compra, venta y devolución","Extracción, transformación y venta"],0,"Toda actividad económica pasa por producción, distribución y consumo."],
+  ["A","¿Qué es la actividad económica?",["El proceso por el que se crean y distribuyen bienes y servicios","El cobro de impuestos por el Estado","La fijación de los salarios","El reparto de la riqueza entre países"],0,"Es el proceso que genera riqueza creando y distribuyendo bienes y servicios."],
+  ["A","¿Qué fase incluye lo que ocurre desde que se fabrica el producto hasta que llega al consumidor?",["Producción","Distribución","Consumo","Inversión"],1,"La distribución lleva el producto al consumidor, con calidad, precio adecuado y accesibilidad."],
+  ["A","En los países desarrollados, ¿qué actividades suponen la mayor parte de la economía?",["La agricultura","La minería","Los servicios","La pesca"],2,"Los servicios generan más empleo y pesan más en el PIB."],
+  ["A","¿Cuál de estos es un servicio y no un bien?",["Un periódico","Una lavadora","Un coche","La sanidad"],3,"Los bienes son objetos materiales. Sanidad, enseñanza u hostelería son servicios."],
+  ["A","¿Cómo se estimula y dirige el consumo?",["Con la mercadotecnia y la publicidad","Con la minería","Con los factores de producción","Con el transporte marítimo"],0,"El consumo, última fase del proceso, se estimula con mercadotecnia y publicidad."],
+  ["A","Valoramos más los bienes que son...",["Abundantes","Escasos","Baratos","Gratuitos"],1,"Lo escaso se valora más (oro, diamantes). Lo abundante, como el aire, apenas se valora."],
+  ["A","Si sigues consumiendo más unidades de un mismo bien, su utilidad...",["Aumenta","Se mantiene","Decrece","Desaparece de golpe"],2,"Es la utilidad decreciente: la primera unidad satisface más que las siguientes."],
+  ["A","¿Qué ventaja tiene el transporte en contenedores?",["Es estándar y permite combinar barco, tren y camión","Solo sirve para mercancías pequeñas","Es más lento pero más barato","Solo transporta alimentos"],0,"Los contenedores son estándar, protegen la mercancía y se mueven rápido de un medio de transporte a otro."],
+
+  ["F","¿Cuántos factores de producción hay?",["2","3","4","5"],2,"Son cuatro: trabajo, tierra, capital y tecnología."],
+  ["F","¿Cuál de estos NO es un factor de producción?",["Trabajo","Capital","Tecnología","Consumo"],3,"El consumo es una fase de la actividad económica, no un factor de producción."],
+  ["F","¿Qué incluye el factor tierra?",["Solo el suelo cultivable","Agua, suelo, plantas, animales y minerales","Las máquinas y las fábricas","El dinero para empezar un negocio"],1,"La tierra son los recursos naturales necesarios para producir."],
+  ["F","¿Qué actividad se basa en la explotación del factor tierra?",["La minería","La banca","La publicidad","El comercio electrónico"],0,"Agricultura, ganadería, pesca, minería y obtención de energía explotan recursos naturales."],
+  ["F","¿Qué es el capital físico?",["Las personas que trabajan","El dinero necesario para empezar","Las máquinas y las fábricas","Los conocimientos y métodos"],2,"Físico: máquinas y fábricas. Humano: personas. Financiero: dinero."],
+  ["F","¿Qué es el capital financiero?",["El dinero necesario para iniciar una actividad económica","Las máquinas de una fábrica","La formación de los trabajadores","Los recursos naturales"],0,"El capital puede ser físico, humano y financiero."],
+  ["F","¿Cómo es la tecnología robotizada?",["Las máquinas las manejan personas","Se hace todo a mano","La máquina aporta la fuerza y se maneja a sí misma","Solo se usa en la agricultura"],2,"Manual: a mano. Mecanizada: máquinas manejadas por personas. Robotizada: la máquina se maneja sola."],
+  ["F","Un trabajador cualificado es el que...",["No necesita ninguna formación","Necesita formación para realizar su trabajo","Trabaja menos horas","Trabaja siempre para el Estado"],1,"Se califica de cualificado o no cualificado según la formación que exige el puesto."],
+
+  ["S","¿Qué sistema económico está regulado por el mercado y la ley de oferta y demanda?",["Socialista","Capitalista","Mixto","Comunista"],1,"En el capitalismo, oferta y demanda deciden qué, cómo y para quién producir."],
+  ["S","En el sistema socialista, ¿quién planifica qué bienes se necesitan y cómo producirlos?",["El mercado","Las empresas","Las familias","El Estado"],3,"En el socialismo la actividad la regula y planifica el Estado."],
+  ["S","¿Qué sistema es el de la gran mayoría de países del mundo?",["Capitalista puro","Socialista puro","Mixto","Ninguno"],2,"En el mixto hay mercado y propiedad privada, pero el Estado también interviene."],
+  ["S","¿Qué tres preguntas responde un sistema económico?",["¿Cuánto cuesta, quién vende y dónde?","¿Qué producir, cómo producir y para quién?","¿Cuándo, dónde y cuánto?","¿Quién paga, quién cobra y cuándo?"],1,"Qué hay que producir, cómo hacerlo y para quién."],
+  ["S","En el capitalismo, ¿qué buscan los empresarios al decidir cómo producir?",["La igualdad social","El máximo beneficio","La propiedad estatal","Menos ventas"],1,"Producen buscando el máximo beneficio, y para quien pueda pagar los productos."],
+  ["S","¿Qué caracteriza al sistema mixto?",["Solo existe propiedad estatal","No existe propiedad privada","Hay propiedad privada y estatal, y políticas contra la desigualdad","El Estado no interviene nunca"],2,"Combina mercado y Estado: educación, sanidad y otras políticas limitan las desigualdades."],
+  ["S","¿Cuáles son objetivos del sistema socialista?",["Máximo beneficio y propiedad privada","Propiedad estatal de los medios de producción e igualdad social","Libre competencia y oferta y demanda","Eliminar los impuestos"],1,"Propiedad estatal, igualdad social y planificación económica."],
+
+  ["G","¿Cuáles son los tres agentes económicos?",["Familias, empresas y sector público","Bancos, tiendas y fábricas","Trabajadores, jefes y clientes","Consumidores, mercados y puertos"],0,"Los agentes son familias, empresas y sector público (el Estado)."],
+  ["G","¿Cuál es el objetivo de las empresas?",["Aumentar el bienestar de los ciudadanos","Conseguir el mayor beneficio posible","Satisfacer necesidades según sus ingresos","Regular la economía"],1,"Las empresas buscan el mayor beneficio vendiendo más o a mayor precio."],
+  ["G","¿Cuál es la función básica de las familias?",["Producir bienes y servicios","Regular la actividad económica","Consumir bienes y servicios y prestar los factores productivos","Cobrar impuestos"],2,"Las familias consumen y ofrecen a las empresas los factores productivos, como su trabajo."],
+  ["G","¿Qué agente regula toda la actividad económica?",["Las familias","Las empresas","Los bancos","El sector público"],3,"Es el Estado, que busca eficiencia, equidad y estabilidad."],
+  ["G","¿Qué reciben las empresas del Estado a cambio de impuestos?",["Infraestructuras y ayudas","Servicios públicos como la sanidad","Salarios","Trabajadores"],0,"Las empresas reciben infraestructuras y ayudas. Las familias, servicios públicos."],
+  ["G","¿Qué ocurre en el mercado de trabajo?",["Las empresas venden bienes","Las familias venden su trabajo y las empresas pagan salarios","El Estado cobra impuestos","Las familias pagan los bienes"],1,"Las familias venden su trabajo, las empresas contratan y pagan salarios, y así las familias obtienen ingresos."],
+  ["G","¿Qué busca el sector público?",["El mayor beneficio","Vender más productos","Aumentar el bienestar de los ciudadanos con eficiencia, equidad y estabilidad","Ahorrar todo su dinero"],2,"Ese es el objetivo del sector público."],
+  ["G","¿Cuál de estas acciones corresponde a las familias?",["Fabricar bienes","Cobrar impuestos","Depositar sus ahorros en los bancos","Ayudar en la dependencia"],2,"Las familias consumen, ofrecen mano de obra, pagan impuestos y depositan ahorros."],
+
+  ["L","¿Qué es la globalización?",["Un proceso en el que los países son cada vez más interdependientes","El aislamiento económico de cada país","La desaparición de las empresas","El reparto igual de la riqueza"],0,"Las relaciones entre las partes del mundo son cada vez más estrechas y los países dependen unos de otros."],
+  ["L","¿Cuál es una consecuencia económica NEGATIVA de la globalización?",["Más posibilidades de negocio","Más peso de las multinacionales en perjuicio de las pequeñas empresas","Difusión de la ciencia","Más empleo"],1,"Las grandes multinacionales ganan peso frente a las empresas nacionales y pequeñas."],
+  ["L","¿Cuál es una consecuencia POSITIVA de la globalización?",["Pérdida de identidad cultural","Inestabilidad laboral","Difusión de la ciencia, la tecnología y la cultura","Grandes movimientos migratorios"],2,"Positiva en lo cultural: difunde ciencia, tecnología y cultura."],
+  ["L","¿Qué consecuencia cultural negativa puede tener?",["Más empleo","Difusión de avances médicos","Más libertades","Pérdida de la identidad cultural de algunos pueblos"],3,"Se imponen modelos occidentales y algunos pueblos pierden su identidad cultural."],
+  ["L","¿Qué consecuencia política negativa tiene la globalización?",["Limita la autonomía de los países","Difunde la democracia","Aumenta el nivel de vida","Facilita la movilidad"],0,"Los países quedan condicionados por instituciones internacionales, grandes potencias y multinacionales."],
+  ["L","¿Qué consecuencia social negativa tiene?",["Difunde avances sanitarios","Inestabilidad laboral y descenso salarial","Aumenta el empleo","Difunde los derechos de las mujeres"],1,"También promueve grandes migraciones entre países ricos y pobres."],
+  ["L","¿Cuál es una consecuencia social POSITIVA?",["Descenso salarial","Delincuencia internacional","Aumento del nivel de vida y del empleo","Pérdida de autonomía"],2,"También facilita la movilidad de la población y difunde avances médicos y sanitarios."]
+];
+
+const BANK = RAW.map(([c, q, o, a, e]) => ({ c, q, o, a, e }));
+const TIME = 20;
+const BEST_KEY = "puerto-tema1-mejor";
+
+/* ---------- Utilidades ---------- */
+const $ = s => document.querySelector(s);
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function show(id) {
+  document.querySelectorAll(".screen").forEach(s => s.hidden = s.id !== id);
+  window.scrollTo(0, 0);
+}
+function getBest() {
+  try { return Number(localStorage.getItem(BEST_KEY)) || 0; } catch (e) { return 0; }
+}
+function setBest(v) {
+  try { localStorage.setItem(BEST_KEY, String(v)); } catch (e) {}
+}
+function prepare(q) {
+  const order = shuffle(q.o.map((_, k) => k));
+  return { ...q, opts: order.map(k => q.o[k]), ans: order.indexOf(q.a) };
+}
+
+/* ---------- Menú ---------- */
+const cfg = { cats: new Set(Object.keys(CATS)) };
+let G = null;
+let timerId = null;
+
+function buildChips() {
+  const box = $("#chips");
+  box.innerHTML = "";
+  Object.entries(CATS).forEach(([k, c]) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.style.setProperty("--cc", `var(${c.v})`);
+    b.setAttribute("aria-pressed", "true");
+    b.innerHTML = `<i></i>${c.n}`;
+    b.addEventListener("click", () => {
+      if (cfg.cats.has(k)) cfg.cats.delete(k); else cfg.cats.add(k);
+      b.setAttribute("aria-pressed", cfg.cats.has(k));
+      $("#startMsg").textContent = "";
+    });
+    box.appendChild(b);
+  });
+}
+
+function showBest() {
+  const b = getBest();
+  $("#best").textContent = b ? `Tu mejor puntuación: ${b}` : "";
+}
+
+$("#go").addEventListener("click", () => {
+  const pool = BANK.filter(q => cfg.cats.has(q.c));
+  if (!pool.length) {
+    $("#startMsg").textContent = "Elige al menos un apartado.";
+    return;
+  }
+  const r = $("#rounds").value;
+  const n = r === "all" ? pool.length : Math.min(Number(r), pool.length);
+  begin(shuffle(pool.slice()).slice(0, n), false);
+});
+
+/* ---------- Partida ---------- */
+function begin(questions, review) {
+  G = {
+    qs: questions.map(prepare),
+    i: 0, score: 0, streak: 0,
+    lives: review ? Infinity : 3,
+    review,
+    timed: $("#timed").checked,
+    results: [],
+    locked: false,
+    timeLeft: TIME,
+    lastIdx: -1
+  };
+  show("game");
+  renderStack();
+  loadQ();
+}
+
+function renderStack() {
+  const n = G.qs.length;
+  const cols = n > 12 ? 10 : 6;
+  const rows = Math.ceil(n / cols);
+  const stack = $("#stack");
+  stack.innerHTML = "";
+  for (let r = 0; r < rows; r++) {
+    const row = document.createElement("div");
+    row.className = "row";
+    for (let c = 0; c < cols; c++) {
+      const idx = r * cols + c;
+      const box = document.createElement("div");
+      box.className = "box";
+      if (idx >= n) {
+        box.classList.add("ghost");
+      } else if (G.results[idx] === undefined) {
+        box.classList.add("empty");
+      } else if (G.results[idx]) {
+        box.classList.add("full");
+        box.style.setProperty("--cc", `var(${CATS[G.qs[idx].c].v})`);
+        if (idx === G.lastIdx) box.classList.add("new");
+      } else {
+        box.classList.add("miss");
+        box.textContent = "✕";
+      }
+      row.appendChild(box);
+    }
+    stack.appendChild(row);
+  }
+}
+
+function renderHud() {
+  $("#score").textContent = G.score;
+  $("#prog").textContent = `${Math.min(G.i + 1, G.qs.length)} / ${G.qs.length}`;
+  const lv = $("#lives");
+  if (G.review) {
+    lv.textContent = "Modo repaso";
+  } else {
+    lv.innerHTML = [0, 1, 2].map(k => `<span class="${k < G.lives ? "" : "lost"}">⚓</span>`).join("");
+  }
+}
+
+function loadQ() {
+  const q = G.qs[G.i];
+  G.locked = false;
+  renderHud();
+  const tag = $("#qcat");
+  tag.style.setProperty("--cc", `var(${CATS[q.c].v})`);
+  tag.querySelector("span").textContent = CATS[q.c].n;
+  $("#qtext").textContent = q.q;
+  const box = $("#opts");
+  box.innerHTML = "";
+  q.opts.forEach((t, k) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "opt";
+    b.innerHTML = `<b>${k + 1}</b><span></span>`;
+    b.querySelector("span").textContent = t;
+    b.addEventListener("click", () => answer(k));
+    box.appendChild(b);
+  });
+  $("#fb").hidden = true;
+  startTimer();
+}
+
+function startTimer() {
+  stopTimer();
+  const t = $("#timer");
+  t.hidden = !G.timed;
+  if (!G.timed) return;
+  G.timeLeft = TIME;
+  t.classList.remove("low");
+  $("#tbar").style.width = "100%";
+  timerId = setInterval(() => {
+    G.timeLeft = Math.max(0, G.timeLeft - 0.1);
+    $("#tbar").style.width = (G.timeLeft / TIME * 100) + "%";
+    t.classList.toggle("low", G.timeLeft <= 5);
+    if (G.timeLeft <= 0) answer(-1);
+  }, 100);
+}
+function stopTimer() {
+  if (timerId) { clearInterval(timerId); timerId = null; }
+}
+
+function answer(k) {
+  if (!G || G.locked) return;
+  G.locked = true;
+  stopTimer();
+  const q = G.qs[G.i];
+  const ok = k === q.ans;
+  const btns = document.querySelectorAll("#opts .opt");
+  btns.forEach((b, idx) => {
+    b.disabled = true;
+    if (idx === q.ans) b.classList.add("ok");
+    else if (idx === k) b.classList.add("bad");
+  });
+  G.results[G.i] = ok;
+  G.lastIdx = G.i;
+  if (ok) {
+    G.streak++;
+    G.score += 100 + Math.min(G.streak - 1, 4) * 25 + (G.timed ? Math.round(G.timeLeft * 3) : 0);
+  } else {
+    G.streak = 0;
+    G.lives--;
+  }
+  renderHud();
+  renderStack();
+  $("#fbTitle").textContent = ok ? "¡Contenedor cargado!" : (k === -1 ? "Se acabó el tiempo" : "Hueco en el barco");
+  $("#fbText").textContent = q.e;
+  const last = G.i >= G.qs.length - 1 || G.lives <= 0;
+  const nx = $("#next");
+  nx.textContent = last ? "Ver resultado" : "Siguiente";
+  $("#fb").hidden = false;
+  nx.focus();
+}
+
+$("#next").addEventListener("click", () => {
+  if (G.i >= G.qs.length - 1 || G.lives <= 0) { finish(); return; }
+  G.i++;
+  loadQ();
+});
+
+document.addEventListener("keydown", e => {
+  if (!G || $("#game").hidden || G.locked) return;
+  const n = Number(e.key);
+  if (n >= 1 && n <= 4 && n <= G.qs[G.i].opts.length) answer(n - 1);
+});
+
+/* ---------- Final ---------- */
+function finish() {
+  stopTimer();
+  const done = G.results.length;
+  const right = G.results.filter(Boolean).length;
+  const pct = done ? Math.round(right / done * 100) : 0;
+  const sunk = G.lives <= 0;
+
+  $("#endTitle").textContent = sunk ? "El barco no zarpa" : (G.review ? "Repaso terminado" : "El barco zarpa");
+  $("#endScore").textContent = G.score;
+  $("#endInfo").textContent = `Has cargado ${right} de ${G.qs.length} contenedores (${pct}% de aciertos).`;
+
+  let msg;
+  if (pct >= 90) msg = "Dominas el tema. Un repaso rápido y listo.";
+  else if (pct >= 70) msg = "Buen nivel. Repasa los fallos y repite.";
+  else if (pct >= 40) msg = "Vas por buen camino. Mira los fallos y vuelve a jugar.";
+  else msg = "Relee la explicación del tema y vuelve a intentarlo.";
+  let bestTxt = msg;
+  if (!G.review) {
+    const b = getBest();
+    if (G.score > b) { setBest(G.score); bestTxt += " ¡Nueva mejor puntuación!"; }
+    else bestTxt += ` Tu mejor puntuación: ${b}.`;
+  }
+  $("#endBest").textContent = bestTxt;
+
+  // Aciertos por apartado
+  const stats = {};
+  G.results.forEach((ok, i) => {
+    const c = G.qs[i].c;
+    stats[c] = stats[c] || { r: 0, t: 0 };
+    stats[c].t++;
+    if (ok) stats[c].r++;
+  });
+  const bars = $("#bars");
+  bars.innerHTML = "";
+  Object.keys(CATS).forEach(k => {
+    if (!stats[k]) return;
+    const s = stats[k];
+    const row = document.createElement("div");
+    row.className = "bar";
+    row.style.setProperty("--cc", `var(${CATS[k].v})`);
+    row.innerHTML = `<span>${CATS[k].n}</span><div class="track"><i style="width:${s.r / s.t * 100}%"></i></div><span>${s.r}/${s.t}</span>`;
+    bars.appendChild(row);
+  });
+
+  // Fallos
+  const wrong = G.qs.filter((_, i) => G.results[i] === false);
+  G.wrong = wrong;
+  $("#failBox").hidden = !wrong.length;
+  $("#review").hidden = !wrong.length;
+  const ul = $("#fails");
+  ul.innerHTML = "";
+  wrong.forEach(q => {
+    const li = document.createElement("li");
+    const b = document.createElement("b");
+    b.textContent = q.q;
+    const small = document.createElement("small");
+    small.textContent = "Correcta: " + q.opts[q.ans];
+    li.append(b, small);
+    ul.appendChild(li);
+  });
+
+  show("end");
+}
+
+$("#again").addEventListener("click", () => $("#go").click());
+$("#review").addEventListener("click", () => begin(shuffle(G.wrong.map(q => BANK.find(b => b.q === q.q))), true));
+$("#menu").addEventListener("click", () => { showBest(); show("start"); });
+
+/* ---------- Arranque ---------- */
+buildChips();
+showBest();
+</script>
+</body>
+</html>
